@@ -6,6 +6,7 @@
 *.lo
 *.o
 *.obj
+[Bb]uild/
 
 # Precompiled Headers
 *.gch
@@ -30,3 +31,6 @@
 *.exe
 *.out
 *.app
+
+# Visual Studio Code caches and configurations
+.vscode/
