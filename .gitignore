@@ -34,3 +34,10 @@
 
 # Visual Studio Code caches and configurations
 .vscode/
+
+# Graphviz files
+*.dot
+
+# Resources
+res/parts-model/
+res/*.xlsx
