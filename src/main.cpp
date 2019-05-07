@@ -19,6 +19,7 @@
 
 #include "BoundingBox.hpp"
 #include "Connection.hpp"
+#include "BCTNode.hpp"
 
 using namespace boost;
 
@@ -194,6 +195,7 @@ int main() {
     fout << "}\n";
   }
 
+  vector<BCTNode *> binary_clustering_forest;
   {
     
   }
