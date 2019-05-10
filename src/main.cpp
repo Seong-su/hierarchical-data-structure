@@ -195,10 +195,10 @@ int main() {
     fout << "}\n";
   }
 
-  vector<BCTNode *> binary_clustering_forest;
-  {
+  // vector<BCTNode *> binary_clustering_forest;
+  // {
     
-  }
+  // }
 
   return EXIT_SUCCESS;
 }
