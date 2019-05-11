@@ -8,7 +8,7 @@ include(CTest)
 enable_testing()
 
 #Can manually add the sources using the set command as follows:
-set(SOURCES src/main.cpp src/BoundingBox.cpp src/Connection.cpp)
+set(SOURCES src/main.cpp src/BoundingBox.cpp src/Connection.cpp src/BCTNode.cpp)
 
 add_executable(hierarchical-data-structure ${SOURCES})
 
