@@ -17,9 +17,9 @@
 #include <boost/property_map/transform_value_property_map.hpp>
 #include <boost/variant.hpp>
 
+#include "BCTNode.hpp"
 #include "BoundingBox.hpp"
 #include "Connection.hpp"
-#include "BCTNode.hpp"
 
 using namespace boost;
 
@@ -195,10 +195,19 @@ int main() {
     fout << "}\n";
   }
 
-  // vector<BCTNode *> binary_clustering_forest;
-  // {
-    
-  // }
+  BCTForest forest;
+  {
+    auto edge_names = get(&BoundingBox::name_, graph);
+    int idx = 0;
+    for (vector<EdgeDesc>::iterator ei = spanning_tree.begin();
+         ei != spanning_tree.end(); ++ei) {
+      BCTNode* node = new BCTNode(edge_names[source(*ei, graph)],
+                                  edge_names[target(*ei, graph)], idx++);
+      forest.insert(node);
+    }
+
+    forest.traversal();
+  }
 
   return EXIT_SUCCESS;
 }

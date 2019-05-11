@@ -2,37 +2,52 @@
 #define BCT_NODE_HPP_
 
 #include <forward_list>
+#include <fstream>
+#include <map>
 #include <string>
 #include <unordered_set>
-
-class BCTForest;
+#include <vector>
 
 class BCTNode {
  public:
   explicit BCTNode(const std::string &source_node,
-                   const std::string &target_node);
+                   const std::string &target_node, int id);
   ~BCTNode();
 
-  bool contains_node(const std::string &name);
+  bool contains_node(const std::string &name) const;
 
-  // static BCTForest &Forest() { return forest_; }
+  const std::string &left_name() const { return left_name_; }
+  const std::string &right_name() const { return right_name_; }
+  std::unordered_set<std::string> &name_content() { return name_content_; }
+  int id() const { return id_; }
+
+  BCTNode *parent, *left, *right;
 
  private:
-  static BCTForest forest_;
-
   std::unordered_set<std::string>
       name_content_;  // memory overhead and performance warning
+  std::string left_name_, right_name_;
   double cost_;
-  BCTNode *parent_, *left_, *right_;
+  int id_;
 };
 
 class BCTForest {
  public:
+  BCTForest();
+  ~BCTForest();
+
+  void insert(BCTNode *node);
+
+  void preorder(BCTNode *root, int level, std::map<int, std::vector<int>> &map,
+                std::ofstream &fout);
+
+  void traversal();
+
+ private:
   BCTNode *find_root_contains_node(const std::string &name);
   void erase_root(BCTNode *root);
   void insert_root(BCTNode *root);
 
- private:
   std::forward_list<BCTNode *> trees;
 };
 

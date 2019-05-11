@@ -1,67 +1,126 @@
-#include <forward_list>
-#include <string>
-#include <unordered_set>
-
 #include "BCTNode.hpp"
 
-BCTNode::BCTNode(const std::string &source_node, const std::string &target_node)
-    : parent_(nullptr) {
-  BCTNode *source_root = forest_.find_root_contains_node(source_node);
-  BCTNode *target_root = forest_.find_root_contains_node(target_node);
+// BCTNode
 
-  if (source_root && target_root) {
-    left_ = source_root;
-    right_ = target_root;
+BCTNode::BCTNode(const std::string &source_node, const std::string &target_node,
+                 int id)
+    : parent(nullptr), left(nullptr), right(nullptr), id_(id) {
+  left_name_ = source_node;
+  right_name_ = target_node;
 
-    name_content_ = source_root->name_content_;
-    name_content_.insert(target_root->name_content_.begin(),
-                         target_root->name_content_.end());
-
-    source_root->parent_ = this;
-    target_root->parent_ = this;
-
-    forest_.erase_root(source_root);
-    forest_.erase_root(target_root);
-    forest_.insert_root(this);
-  } else if (source_root) {
-    left_ = source_root;
-    right_ = nullptr;
-
-    name_content_ = source_root->name_content_;
-    name_content_.insert(target_node);
-
-    source_root->parent_ = this;
-
-    forest_.erase_root(source_root);
-    forest_.insert_root(this);
-  } else if (target_root) {
-    left_ = nullptr;
-    right_ = target_root;
-
-    name_content_ = target_root->name_content_;
-    name_content_.insert(source_node);
-
-    target_root->parent_ = this;
-
-    forest_.erase_root(target_root);
-    forest_.insert_root(this);
-  } else {
-    left_ = nullptr;
-    right_ = nullptr;
-
-    name_content_.insert(source_node);
-    name_content_.insert(target_node);
-
-    forest_.insert_root(this);
-  }
+  name_content_.insert(source_node);
+  name_content_.insert(target_node);
 }
 
 BCTNode::~BCTNode() {}
 
-bool BCTNode::contains_node(const std::string &name) {
+bool BCTNode::contains_node(const std::string &name) const {
   return name_content_.find(name) != name_content_.end();
 }
 
+// BCTForest
+
+BCTForest::BCTForest() {}
+
+BCTForest::~BCTForest() {}
+
+void BCTForest::insert(BCTNode *node) {
+  const std::string &source_node = node->left_name();
+  const std::string &target_node = node->right_name();
+
+  BCTNode *source_root = find_root_contains_node(source_node);
+  BCTNode *target_root = find_root_contains_node(target_node);
+
+  if (source_root && target_root) {
+    node->left = source_root;
+    node->right = target_root;
+
+    node->name_content() = source_root->name_content();
+    node->name_content().insert(target_root->name_content().begin(),
+                                target_root->name_content().end());
+
+    source_root->parent = node;
+    target_root->parent = node;
+
+    erase_root(source_root);
+    erase_root(target_root);
+    insert_root(node);
+  } else if (source_root) {
+    node->left = source_root;
+
+    node->name_content() = source_root->name_content();
+    node->name_content().insert(target_node);
+
+    source_root->parent = node;
+
+    erase_root(source_root);
+    insert_root(node);
+  } else if (target_root) {
+    node->right = target_root;
+
+    node->name_content() = target_root->name_content();
+    node->name_content().insert(source_node);
+
+    target_root->parent = node;
+
+    erase_root(target_root);
+    insert_root(node);
+  } else {
+    insert_root(node);
+  }
+}
+
+void BCTForest::preorder(BCTNode *root, int level,
+                         std::map<int, std::vector<int>> &map,
+                         std::ofstream &fout) {
+  if (root == nullptr) return;
+
+  map[level].push_back(root->id());
+
+  std::string left_id, right_id;
+  if (root->left == nullptr) {
+    left_id = root->left_name();
+  } else {
+    left_id = std::to_string(root->left->id());
+  }
+  if (root->right == nullptr) {
+    right_id = root->right_name();
+  } else {
+    right_id = std::to_string(root->right->id());
+  }
+
+  fout << "\"" << root->id() << "\" -- \"" << left_id << "\"\n";
+  fout << "\"" << root->id() << "\" -- \"" << right_id << "\"\n";
+
+  preorder(root->left, level + 1, map, fout);
+  preorder(root->right, level + 1, map, fout);
+}
+
+void BCTForest::traversal() {
+  std::map<int, std::vector<int>> map;
+
+  std::ofstream fout("bin/bct.dot");
+  fout << "graph BCT {\n"
+       << " ranksep=0.5\n"
+       << " size=\"50,10\"\n"
+       << " ratio=\"fill\"\n"
+       << " edge[dir=none]\n"
+       << " node[shape=\"box3d\", width=1.5, height=0.5, "
+          "fontname=\"Arial\"]\n";
+
+  for (const auto &root : trees) {
+    preorder(root, 1, map, fout);
+  }
+
+  // for (auto it : map) {
+  //   fout << "Level " << it.first << ": ";
+  //   for (const auto &i : it.second) fout << i << " ";
+
+  //   fout << "\n";
+  // }
+
+  fout << "}\n";
+}
 
 BCTNode *BCTForest::find_root_contains_node(const std::string &name) {
   BCTNode *root = nullptr;
@@ -79,13 +138,7 @@ void BCTForest::erase_root(BCTNode *root) {
     return;
   }
 
-  for (auto itr = trees.begin(); itr != trees.end(); ++itr) {
-    if ((*itr) == root) {
-      auto itr_before = std::prev(itr, 1);
-      trees.erase_after(itr_before);
-      break;
-    }
-  }
+  trees.remove(root);
 }
 
 void BCTForest::insert_root(BCTNode *root) { trees.emplace_front(root); }
