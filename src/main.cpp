@@ -199,11 +199,11 @@ int main() {
   {
     auto edge_names = get(&BoundingBox::name_, graph);
     int idx = 0;
-    for (vector<EdgeDesc>::iterator ei = spanning_tree.begin();
-         ei != spanning_tree.end(); ++ei) {
-      BCTNode* node = new BCTNode(edge_names[source(*ei, graph)],
-                                  edge_names[target(*ei, graph)], idx++);
-      forest.insert(node);
+    for (auto ei = spanning_tree.begin(); ei != spanning_tree.end(); ++ei) {
+      auto node =
+          std::make_unique<BCTNode>(edge_names[source(*ei, graph)],
+                                    edge_names[target(*ei, graph)], ++idx);
+      forest.insert(std::move(node));
     }
 
     forest.traversal();

@@ -4,6 +4,7 @@
 #include <forward_list>
 #include <fstream>
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -21,7 +22,7 @@ class BCTNode {
   std::unordered_set<std::string> &name_content() { return name_content_; }
   int id() const { return id_; }
 
-  BCTNode *parent, *left, *right;
+  std::unique_ptr<BCTNode> left, right;
 
  private:
   std::unordered_set<std::string>
@@ -36,19 +37,18 @@ class BCTForest {
   BCTForest();
   ~BCTForest();
 
-  void insert(BCTNode *node);
+  void insert(std::unique_ptr<BCTNode> node);
 
-  void preorder(BCTNode *root, int level, std::map<int, std::vector<int>> &map,
-                std::ofstream &fout);
+  void preorder(const std::unique_ptr<BCTNode> &root, int level,
+                std::map<int, std::vector<int>> &map, std::ofstream &fout);
 
   void traversal();
 
  private:
-  BCTNode *find_root_contains_node(const std::string &name);
-  void erase_root(BCTNode *root);
-  void insert_root(BCTNode *root);
+  std::unique_ptr<BCTNode> find_root_contains_node(const std::string &name);
+  void insert_root(std::unique_ptr<BCTNode> root);
 
-  std::forward_list<BCTNode *> trees;
+  std::forward_list<std::unique_ptr<BCTNode>> trees;
 };
 
 #endif  // BCT_NODE_HPP_
