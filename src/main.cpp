@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include <stack>
+
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
@@ -20,6 +22,7 @@
 #include "BCTNode.hpp"
 #include "BoundingBox.hpp"
 #include "Connection.hpp"
+#include "Family.hpp"
 
 using namespace boost;
 
@@ -207,6 +210,11 @@ int main() {
     }
 
     forest.traversal();
+  }
+
+  vector<Family> families;
+  {
+
   }
 
   return EXIT_SUCCESS;
