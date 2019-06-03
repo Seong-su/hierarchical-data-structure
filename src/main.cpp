@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include <chrono>
 #include <stack>
 
 #include <assimp/postprocess.h>
@@ -23,6 +24,7 @@
 #include "BoundingBox.hpp"
 #include "Connection.hpp"
 #include "Family.hpp"
+#include "KAryTree.hpp"
 
 using namespace boost;
 
@@ -104,6 +106,9 @@ int main() {
     auto maxs = get(&BoundingBox::max_, graph);
     auto mins = get(&BoundingBox::min_, graph);
 
+    // time check
+    auto start = std::chrono::high_resolution_clock::now();
+
     for (VertexIter vert1 = vp.first; vert1 != vp.second; ++vert1) {
       for (VertexIter vert2 = std::next(vert1, 1); vert2 != vp.second;
            ++vert2) {
@@ -122,8 +127,20 @@ int main() {
       }
     }
 
+    // time check
+    auto end = std::chrono::high_resolution_clock::now();
+    // Calculating total time taken by the program.
+    double time_taken =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(end - start)
+            .count();
+
+    cout << "Time taken by generating an adjacency graph is : " << std::fixed
+         << time_taken;
+    cout << " nanoseconds" << endl;
+
     auto edge_names = get(&BoundingBox::name_, graph);
     cout << "edges(g) = ";
+
     graph_traits<Graph>::edge_iterator ei, ei_end;
     for (tie(ei, ei_end) = edges(graph); ei != ei_end; ++ei) {
       cout << "(" << edge_names[source(*ei, graph)] << ","
@@ -152,9 +169,23 @@ int main() {
   {
     auto costs = get(&Connection::cost_, graph);
     auto edge_names = get(&BoundingBox::id_, graph);
+
+    // time check
+    auto start = std::chrono::high_resolution_clock::now();
+
     kruskal_minimum_spanning_tree(
         graph, std::back_inserter(spanning_tree),
         weight_map(costs).vertex_index_map(get(&BoundingBox::id_, graph)));
+
+    // time check
+    auto end = std::chrono::high_resolution_clock::now();
+    // Calculating total time taken by the program.
+    double time_taken =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(end - start)
+            .count();
+
+    cout << "Time taken by generating an MST is : " << std::fixed << time_taken;
+    cout << " nanoseconds" << endl;
 
     cout << "Print the edges in the MST:" << endl;
     for (vector<EdgeDesc>::iterator ei = spanning_tree.begin();
@@ -202,19 +233,109 @@ int main() {
   {
     auto edge_names = get(&BoundingBox::name_, graph);
     int idx = 0;
-    for (auto ei = spanning_tree.begin(); ei != spanning_tree.end(); ++ei) {
-      auto node =
-          std::make_unique<BCTNode>(edge_names[source(*ei, graph)],
-                                    edge_names[target(*ei, graph)], ++idx);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    for (auto ei = spanning_tree.begin(); ei != spanning_tree.end();
+         ++ei, ++idx) {
+      auto node = std::make_unique<BCTNode>(
+          edge_names[source(*ei, graph)], edge_names[target(*ei, graph)], idx);
       forest.insert(std::move(node));
     }
+    // time check
+    auto end = std::chrono::high_resolution_clock::now();
+    // Calculating total time taken by the program.
+    double time_taken =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(end - start)
+            .count();
+
+    cout << "Time taken by generating an BCT is : " << std::fixed << time_taken;
+    cout << " nanoseconds" << endl;
 
     forest.traversal();
   }
 
-  vector<Family> families;
+  vector<std::unique_ptr<Family>> families;
   {
+    auto names = get(&BoundingBox::name_, graph);
+    auto costs = get(&Connection::cost_, graph);
+    int idx = 0;
+    std::unique_ptr<Family> fam = nullptr;
+    for (auto ei = spanning_tree.begin(); ei != spanning_tree.end();
+         ++ei, ++idx) {
+      auto weight = costs[*ei];
 
+      if (fam == nullptr) {
+        fam = std::move(std::make_unique<Family>());
+        fam->add(weight, idx);
+      } else {
+        if (!fam->add(weight, idx)) {
+          families.push_back(std::move(fam));
+          fam = std::move(std::make_unique<Family>());
+          fam->add(weight, idx);
+        }
+      }
+    }
+
+    if (fam) {
+      families.push_back(std::move(fam));
+    }
+  }
+
+  std::list<std::unique_ptr<KAryTree>> karytrees;
+  {
+    auto names = get(&BoundingBox::name_, graph);
+    auto costs = get(&Connection::cost_, graph);
+
+    int fam_id = 0;
+
+    for (auto& fam : families) {
+      for (const auto& edge_id : fam->edge_id_) {
+        const auto& edge = spanning_tree.at(edge_id);
+        const std::string& source_name = names[source(edge, graph)];
+        const std::string& target_name = names[target(edge, graph)];
+
+        auto source_detected = std::find_if(
+            karytrees.begin(), karytrees.end(),
+            [&source_name](const std::unique_ptr<KAryTree>& ktree) {
+              return ktree->contains(source_name);
+            });
+        auto target_detected = std::find_if(
+            karytrees.begin(), karytrees.end(),
+            [&target_name](const std::unique_ptr<KAryTree>& ktree) {
+              return ktree->contains(target_name);
+            });
+
+        if (source_detected != karytrees.end() &&
+            target_detected != karytrees.end()) {
+          std::unique_ptr<KAryTree> parent = std::make_unique<KAryTree>(fam_id);
+          parent->add_node(std::move(*source_detected));
+          karytrees.erase(source_detected);
+          parent->add_node(std::move(*target_detected));
+          karytrees.erase(target_detected);
+
+          karytrees.push_back(std::move(parent));
+        } else if (source_detected != karytrees.end()) {
+          std::unique_ptr<KAryTree> target_node =
+              std::make_unique<KAryTree>(target_name, fam_id);
+
+        } else if (target_detected != karytrees.end()) {
+        } else {
+          std::unique_ptr<KAryTree> source_node =
+              std::make_unique<KAryTree>(source_name, fam_id);
+          std::unique_ptr<KAryTree> target_node =
+              std::make_unique<KAryTree>(target_name, fam_id);
+
+          std::unique_ptr<KAryTree> parent = std::make_unique<KAryTree>(fam_id);
+          parent->add_node(std::move(source_node));
+          parent->add_node(std::move(target_node));
+
+          karytrees.push_back(std::move(parent));
+        }
+      }
+
+      ++fam_id;
+    }
   }
 
   return EXIT_SUCCESS;

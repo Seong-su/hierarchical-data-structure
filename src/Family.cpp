@@ -5,14 +5,15 @@ Family::Family(/* args */)
 
 Family::~Family() {}
 
-void Family::add_member(double weight) {
+void Family::add_member(double weight, int edge_id) {
+  edge_id_.insert(edge_id);
   weights_.push_back(weight);
   total_sum_ += weight;
   mean_value_ = total_sum_ / weights_.size();
 
   double numerator = 0.0;
   for (const auto &weight_in_list : weights_) {
-    numerator += (weight_in_list - mean_value_);
+    numerator += (weight_in_list - mean_value_) * (weight_in_list - mean_value_);
   }
   standard_deviation_ = std::sqrt(numerator / weights_.size());
 }
@@ -21,14 +22,14 @@ bool Family::criteria(double weight) {
   return weight < mean_value_ + 2 * standard_deviation_;
 }
 
-bool Family::add(double weight) {
+bool Family::add(double weight, int edge_id) {
   if (weights_.size() == 0 || weights_.size() == 1) {
-    add_member(weight);
+    add_member(weight, edge_id);
     return true;
   }
 
   if (criteria(weight)) {
-    add_member(weight);
+    add_member(weight, edge_id);
     return true;
   }
   return false;
